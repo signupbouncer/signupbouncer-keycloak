@@ -1,0 +1,45 @@
+# On a tag v<version>, builds and tests the jar and attaches it to a GitHub release of the same name. The tag must match
+# the version in pom.xml. The release is a draft: publish it on GitHub after checking the jar.
+#
+# Actions are pinned to full commit SHAs (resolved with `git ls-remote` on 27 Oct 2026).
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # to create the draft release and upload the jar
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Check the tag matches pom.xml
+        run: |
+          version="$(mvn -B -q help:evaluate -Dexpression=project.version -DforceStdout)"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match pom.xml version ${version}" >&2
+            exit 1
+          fi
+          echo "VERSION=${version}" >> "${GITHUB_ENV}"
+      - run: mvn -B -q verify
+      - name: Create the draft release with the jar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          jar="keycloak-signupbouncer-${VERSION}.jar"
+          # From inside target/, so the checksum file names the jar as GitHub serves it: `sha256sum -c` then works in
+          # the folder both were downloaded to.
+          (cd target && sha256sum "${jar}" > "${jar}.sha256")
+          gh release create "${GITHUB_REF_NAME}" "target/${jar}" "target/${jar}.sha256" --repo "${GITHUB_REPOSITORY}" --draft --verify-tag \
+            --title "${GITHUB_REF_NAME}" --notes "See CHANGELOG.md. Tested with Keycloak 26.8.1."

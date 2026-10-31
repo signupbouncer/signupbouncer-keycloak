@@ -1,0 +1,28 @@
+# Checks every push to master and every pull request: compile, unit tests, and the jar.
+#
+# Actions are pinned to full commit SHAs (resolved with `git ls-remote` on 27 Oct 2026). The comment after each SHA is
+# the release tag.
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - run: mvn -B -q verify
+      - run: ls -l target/keycloak-signupbouncer-*.jar
