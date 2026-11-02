@@ -155,6 +155,6 @@ The end-to-end run sends the real registration form in these cases:
 - the API stopped;
 - Keycloak behind an outgoing proxy, set with `proxy-mappings` (with a login) and then with `HTTPS_PROXY`.
 
-## Licence
+## License
 
 MIT. See [LICENSE](LICENSE).
