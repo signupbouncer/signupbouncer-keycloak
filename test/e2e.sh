@@ -21,6 +21,7 @@
 #  10. the stub stopped: the account is created;
 #  11. a blocked address sent as user.attributes.email (another name Keycloak accepts): refused;
 #  12. a challenge that burst points helped cause, with challenges refused: the account is created, as in the hooks;
+#      12b. the same for a challenge that repeat-home (repeat_ip) points helped cause (0.2.0);
 #  13. a realm without email on its form, a refused IP: the message shows above the form;
 #  14. Keycloak restarted with proxy-mappings naming an outgoing proxy that needs a login (test/proxy.py on 8098): the
 #      check goes through that proxy with its credentials, and a block is refused;
@@ -50,8 +51,10 @@ FLOW="sb registration"
 CLIENT=sb-e2e
 REDIRECT="$KC/e2e-done"
 engine="$(command -v podman || command -v docker)"
-jar="${JAR:-$(ls "$pkg"/target/keycloak-signupbouncer-*.jar 2>/dev/null | head -1)}"
-[ -n "$jar" ] && [ -f "$jar" ] || { echo "No jar: run bash scripts/build.sh first" >&2; exit 2; }
+# The jar of pom.xml's version, so a jar an older build left in target/ is never the one tested.
+version="$(sed -n 's|^  <version>\(.*\)</version>$|\1|p' "$pkg/pom.xml" | head -1)"
+jar="${JAR:-$pkg/target/keycloak-signupbouncer-$version.jar}"
+[ -n "$version" ] && [ -f "$jar" ] || { echo "No $jar: run bash scripts/build.sh first" >&2; exit 2; }
 work="$(mktemp -d)"
 pass=0
 fail=0
@@ -261,6 +264,8 @@ fi
 set_config '{"apiKey":"sb_live_e2e","refuseChallenge":"true","sendIp":"true"}'
 expect_created "12. challenge from burst points, refuse challenges on: account created (as in the hooks)" \
   "burstchallenge.$n@example.com"
+expect_created "12b. challenge from repeat-home points, refuse challenges on: account created" \
+  "repeatchallenge.$n@example.com"
 set_config '{"apiKey":"sb_live_e2e","refuseChallenge":"false","sendIp":"true"}'
 
 # A realm whose registration form has no email: the step checks the IP alone, and a refusal shows above the form.

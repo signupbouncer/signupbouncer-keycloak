@@ -44,12 +44,14 @@ public final class SignupCheck {
       new ObjectMapper().enable(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
 
   /**
-   * SignupBouncer's velocity reasons (core/rules.ts, `velocity: true`): bursts of signups. They can make a signup a
-   * challenge, never a refusal, so "Refuse signups marked challenge" doesn't apply to a challenge they helped cause,
-   * exactly as the Supabase and Ory hooks treat their "Treat as block" setting.
+   * SignupBouncer's velocity reasons (core/rules.ts, `velocity: true`): bursts of signups, and different inboxes from the
+   * same home IP address (repeat_ip). They can make a signup a challenge, never a refusal, so "Refuse signups marked
+   * challenge" doesn't apply to a challenge they helped cause. The Supabase and Ory hooks are narrower: with "Treat as
+   * block" they allow only a challenge that velocity points alone reached, which the answer here doesn't let us tell
+   * (the app's challenge score isn't in it). api/test/keycloak_velocity_test.ts keeps this list equal to core's.
    */
   static final Set<String> VELOCITY_REASONS =
-      Set.of("burst_subnet", "burst_asn", "burst_inbox", "burst_pattern", "burst_domain");
+      Set.of("burst_subnet", "burst_asn", "burst_inbox", "burst_pattern", "burst_domain", "repeat_ip");
 
   /** What the realm's admin set on the form action. */
   public record Settings(String apiKey, String app, boolean refuseChallenge) {}
@@ -166,9 +168,9 @@ public final class SignupCheck {
   }
 
   /**
-   * Whether velocity points helped make this challenge, so it must go through even when the realm refuses challenges.
-   * The hooks' rule (api/src/routes/machine.ts): a velocity reason with points, and no check the app set to "Always
-   * challenge" (a reason with "setting": "challenge"), which stands on its own.
+   * Whether velocity points helped make this challenge, so it must go through even when the realm refuses challenges:
+   * a velocity reason with points, and no check the app set to "Always challenge" (a reason with "setting":
+   * "challenge"), which stands on its own. The hooks' rule before #258 (api/src/routes/machine.ts).
    */
   static boolean velocityChallenge(JsonNode body) {
     boolean velocity = false;

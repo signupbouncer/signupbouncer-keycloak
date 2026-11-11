@@ -17,7 +17,8 @@ On every plan, including the Free plan:
   even when the domain isn't on any list yet.
 - **Domains that can't receive mail.** A domain with no mail server can't get your verification email.
 - **Repeat signups.** We treat Gmail dots and `+tags` as the same inbox, and count earlier signups of that inbox on your
-  account over the last 7 days. With our default settings, we refuse the fifth spelling of an inbox within 7 days.
+  account over the last 7 days. With our default settings, we refuse a second spelling of an inbox on the same
+  SignupBouncer app within 7 days.
 
 From the Starter plan, the signup's IP address counts toward the signup's score too: datacenter, VPN, Tor and hijacked
 networks. On the Pro plan, bursts of signups count as well. The full list is on the
@@ -32,11 +33,12 @@ rebuilds its list every hour. From the Starter plan, it checks the IP address to
 
 1. [Sign up for SignupBouncer](https://signupbouncer.com/signup), then create an API key on your app's Integration tab.
    Copy the `sb_live_...` key. We show the key only once.
-2. Download `keycloak-signupbouncer-0.1.0.jar` from the
-   [latest release](https://github.com/signupbouncer/keycloak-signupbouncer/releases/latest), or build it (below).
-3. Copy the jar into the `providers/` folder of your Keycloak 26 server. Run `bin/kc.sh build`, then restart Keycloak so
-   it loads the step. A server you started with `start-dev` needs the restart only. In a container image, `COPY` the jar
-   to `/opt/keycloak/providers/` before the build step.
+2. Download `keycloak-signupbouncer-0.2.0.jar` from the
+   [latest release](https://github.com/signupbouncer/signupbouncer-keycloak/releases/latest), or build it (below).
+3. Copy the jar into the `providers/` folder of your Keycloak 26 server. Delete any older `keycloak-signupbouncer` jar
+   from the folder first, because Keycloak loads every jar it finds there. Run `bin/kc.sh build`, then restart Keycloak
+   so it loads the step. A server you started with `start-dev` needs the restart only. In a container image, `COPY` the
+   jar to `/opt/keycloak/providers/` before the build step.
 4. In the admin console, open your realm, then Authentication. Duplicate the `registration` flow, for example as
    "registration with SignupBouncer".
 5. In the copy, add a step to the "registration form" sub-flow. Choose "SignupBouncer signup check" and set it to
@@ -75,19 +77,19 @@ every signup through unchecked, and the line says so.
 
 ## Settings
 
-| Setting                         | Default | What it does                                                                                                     |
-| ------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------- |
-| API key                         |         | Your app's `sb_live_...` key. Without it, every signup goes through unchecked and Keycloak logs a warning.       |
-| Refuse signups marked challenge | Off     | Off: a signup marked challenge goes through. On: it's refused like a block, unless burst points helped cause it. |
-| Send the visitor's IP address   | On      | Off: we check the email address only. See "Behind a proxy or load balancer" before you leave it on.              |
-| App ID (older keys only)        | empty   | Leave this empty unless your key shows "all apps (older key)" on the dashboard. Then paste the `app_...` ID.     |
+| Setting                         | Default | What it does                                                                                                                                               |
+| ------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API key                         |         | Your app's `sb_live_...` key. Without it, every signup goes through unchecked and Keycloak logs a warning.                                                 |
+| Refuse signups marked challenge | Off     | Off: a signup marked challenge goes through. On: it's refused like a block, unless a burst of signups or a third inbox from the same home helped cause it. |
+| Send the visitor's IP address   | On      | Off: we check the email address only. See "Behind a proxy or load balancer" before you leave it on.                                                        |
+| App ID (older keys only)        | empty   | Leave this empty unless your key shows "all apps (older key)" on the dashboard. Then paste the `app_...` ID.                                               |
 
 With a wrong App ID, every signup goes through unchecked and Keycloak logs a warning.
 
-A challenge is a signup we find suspicious but not clear enough to refuse, such as the third spelling of the same inbox
-within 7 days. With "Refuse signups marked challenge" on, we still let through a challenge that burst points helped
-cause, as SignupBouncer's Supabase and Ory hooks do. Bursts are a sign of abuse, and also of a class signing up
-together.
+A challenge is a signup we find suspicious but not clear enough to refuse, such as an address on a free subdomain
+service. With "Refuse signups marked challenge" on, we still let through a challenge that a burst of signups or a third
+inbox from the same home helped cause. A burst can be abuse, or a class signing up together, and a family shares one
+home address.
 
 ## What the person signing up sees
 
@@ -138,16 +140,19 @@ own registration steps, reCAPTCHA among them, use the same interface.
 You need Java 17 or later and Maven 3.8 or later, or a container engine:
 
 ```sh
-mvn verify                   # unit tests, then target/keycloak-signupbouncer-0.1.0.jar
+mvn verify                   # unit tests, then target/keycloak-signupbouncer-0.2.0.jar
 bash scripts/build.sh        # the same in a maven:3.9-eclipse-temurin-21 container (podman or docker)
 bash test/e2e.sh             # a real Keycloak 26.8.1 in a container, against test/stub.ts (needs deno, curl, jq, python3)
 ```
+
+Release jars are built with Java 21 and Maven 3.9, as `scripts/build.sh` builds them. That build of a release tag gives
+the same bytes, so its SHA-256 matches the release's `.sha256` file. A Java 17 build works the same but has other bytes.
 
 The end-to-end run sends the real registration form in these cases:
 
 - an address SignupBouncer allows, and one it blocks;
 - a blocked address sent as `user.attributes.email`, another field name Keycloak accepts;
-- a challenge, with "Refuse signups marked challenge" off and then on, and a challenge from burst points;
+- a challenge, with "Refuse signups marked challenge" off and then on, and challenges from burst and repeat-home points;
 - an answer that takes 3 seconds, a server error and an answer that isn't JSON;
 - a wrong API key;
 - realm overrides of the message, with and without `{0}`;

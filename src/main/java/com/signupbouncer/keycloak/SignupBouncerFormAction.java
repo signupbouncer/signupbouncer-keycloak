@@ -136,7 +136,12 @@ public final class SignupBouncerFormAction implements FormAction {
     switch (d.outcome()) {
       case "allow", "nothing_to_check" -> LOG.debug(line);
       case "block", "challenge_refused", "challenge_allowed", "email_too_long", "quota_exceeded" -> LOG.info(line);
-      case "key_refused" -> LOG.warn(line + " (the API key is wrong, revoked or rotated; signups go through unchecked)");
+      case "key_refused" -> LOG.warn(
+          line
+              + " (the API key is wrong, revoked, rotated more than 24 hours ago, or its app was removed; signups go"
+              + " through unchecked. If its app was removed in the last 7 days, the account owner can get it back by"
+              + " emailing support@signupbouncer.com from the account's email address. Otherwise, create a new key on"
+              + " the dashboard's Integration tab)");
       case "no_app" -> LOG.warn(line + " (no app on this account or for this App ID; signups go through unchecked)");
       case "bad_app_id" -> LOG.warn(
           line + " (the step's App ID setting is too long to be an app ID; signups go through unchecked until you fix it)");

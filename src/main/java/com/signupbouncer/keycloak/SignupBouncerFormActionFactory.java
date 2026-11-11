@@ -131,10 +131,10 @@ public final class SignupBouncerFormActionFactory implements FormActionFactory {
         .name(REFUSE_CHALLENGE)
         .label("Refuse signups marked challenge")
         .helpText(
-            "A challenge is a signup SignupBouncer finds suspicious but not clear enough to refuse, such as the third"
-                + " spelling of the same inbox within 7 days. Off: it goes through, with Keycloak's email verification"
-                + " if the realm has it on. On: it's refused with the same message as a block, unless burst points"
-                + " helped cause it.")
+            "A challenge is a signup SignupBouncer finds suspicious but not clear enough to refuse, such as an address"
+                + " on a free subdomain service. Off: it goes through, with Keycloak's email verification"
+                + " if the realm has it on. On: it's refused with the same message as a block, unless a burst of"
+                + " signups or a third inbox from the same home helped cause it.")
         .type(ProviderConfigProperty.BOOLEAN_TYPE)
         .defaultValue("false")
         .add()

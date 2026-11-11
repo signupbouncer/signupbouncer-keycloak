@@ -4,6 +4,7 @@
 //   challenge... a complete challenge                   slow...     a block, but only after 3 seconds
 //   error500...  HTTP 500                               junk...     HTTP 200 with a body that is not JSON
 //   burstchallenge... a challenge with burst points      no email, IP 203.0.113.66: a block
+//   repeatchallenge... a challenge with repeat-home (repeat_ip) points
 //
 // Any key other than "Bearer sb_live_e2e" gets 401 invalid_api_key, as the real API answers. GET /requests returns
 // every request received (the key replaced by whether it matched), so the run can check what Keycloak sent.
@@ -63,6 +64,14 @@ Deno.serve(
       a.reasons = [
         { code: "datacenter_ip", detail: "stub", points: 40, tier: "starter" },
         { code: "burst_subnet", detail: "stub", points: 25, tier: "pro" },
+      ];
+      return Response.json(a);
+    }
+    if (local.startsWith("repeatchallenge")) {
+      const a = answer("challenge");
+      a.reasons = [
+        { code: "datacenter_ip", detail: "stub", points: 40, tier: "starter" },
+        { code: "repeat_ip", detail: "stub", points: 40, tier: "pro" },
       ];
       return Response.json(a);
     }
