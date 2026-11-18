@@ -147,6 +147,13 @@ public final class SignupBouncerFormAction implements FormAction {
           line + " (the step's App ID setting is too long to be an app ID; signups go through unchecked until you fix it)");
       case "no_api_key" -> LOG.warn(line + " (no API key in the step's settings; signups go through unchecked)");
       case "request_refused" -> LOG.warn(line + " (check the App ID setting; signups go through unchecked)");
+      case "busy" -> LOG.warn(
+          line
+              + " (all "
+              + HttpClientTransport.MAX_CALLS
+              + " check slots stayed busy for "
+              + SignupCheck.TIMEOUT.toMillis()
+              + " ms; signup went through unchecked)");
       default -> LOG.warn(line + " (signup went through unchecked)");
     }
   }

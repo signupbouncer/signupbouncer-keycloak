@@ -12,6 +12,15 @@ public interface Transport {
   /** An HTTP answer. body is null when it was larger than the cap. */
   record Answer(int status, byte[] body) {}
 
+  /** Every call slot stayed busy until the deadline, so nothing was sent. */
+  final class Busy extends TimeoutException {
+    private static final long serialVersionUID = 1L;
+
+    public Busy() {
+      super("every check slot stayed busy until the deadline");
+    }
+  }
+
   /**
    * Posts body to uri with the given headers. Must return or throw within the deadline, which covers connecting,
    * sending and reading the whole answer. Must not follow redirects.

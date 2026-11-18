@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 (2026-11-17)
+
+- When 64 checks are already running, the next signup now waits for one to finish, inside the 1.5 seconds the step waits
+  for SignupBouncer's answer. Before, it went through unchecked right away. If none finishes in time, the signup still
+  goes through unchecked. Keycloak's log and the registration event now give that signup the outcome `busy`, where they
+  gave `network_error` before.
+
 ## 0.2.0 (2026-11-07)
 
 - "Refuse signups marked challenge" now lets through a challenge that the repeat-home check helped cause, as it already

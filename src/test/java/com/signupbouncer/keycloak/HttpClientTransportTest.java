@@ -16,10 +16,8 @@ import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -51,7 +49,7 @@ class HttpClientTransportTest {
 
   private HttpServer server;
   private String base;
-  private ExecutorService callers;
+  private HttpClientTransport.CallPool callers;
   private final List<CloseableHttpClient> clients = new CopyOnWriteArrayList<>();
   private final AtomicInteger redirectTargetHits = new AtomicInteger();
 
@@ -344,20 +342,71 @@ class HttpClientTransportTest {
     assertEquals("network_error", check(() -> null, base + "/broken").outcome());
   }
 
-  @Test
-  void whenEveryPooledThreadIsBusyTheNextCallFailsAtOnce() throws Exception {
-    route("/slow/v1/check", ex -> Thread.sleep(3000));
+  /** Takes the pool's only slot until the latch opens, as a call still in flight would. */
+  private void holdTheOnlySlot(CountDownLatch release) throws InterruptedException {
     callers.shutdownNow();
-    callers = new ThreadPoolExecutor(0, 1, 30, TimeUnit.SECONDS, new SynchronousQueue<>());
-    CloseableHttpClient client = keycloakLike();
-    CompletableFuture<Decision> first = CompletableFuture.supplyAsync(() -> check(client, base + "/slow"));
-    Thread.sleep(300);
+    callers = new HttpClientTransport.CallPool(1);
+    CountDownLatch holding = new CountDownLatch(1);
+    callers.submit(
+        () -> {
+          holding.countDown();
+          return release.await(10, TimeUnit.SECONDS);
+        },
+        System.nanoTime() + 1_000_000_000L);
+    assertTrue(holding.await(1, TimeUnit.SECONDS));
+  }
+
+  @Test
+  void whenEverySlotIsBusyTheNextCallWaitsForOneAndIsChecked() throws Exception {
+    route("/ok/v1/check", ex -> send(ex, 200, SignupCheckTest.answer("block").toString()));
+    CountDownLatch release = new CountDownLatch(1);
+    holdTheOnlySlot(release);
     long t = System.nanoTime();
-    Decision second = check(client, base + "/slow");
+    CompletableFuture.runAsync(() -> {
+      try {
+        Thread.sleep(300);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+      release.countDown();
+    });
+    Decision d = check("/ok");
     long ms = (System.nanoTime() - t) / 1_000_000;
-    assertEquals("network_error", second.outcome());
-    assertTrue(ms < 200, "waited " + ms + " ms for a full pool");
-    assertEquals("timeout", first.get(5, TimeUnit.SECONDS).outcome());
+    assertEquals("block", d.outcome());
+    assertTrue(d.refuse());
+    assertTrue(ms >= 290 && ms < 1500, "checked after " + ms + " ms");
+  }
+
+  @Test
+  void whenEverySlotStaysBusyForTheWholeDeadlineTheCallSendsNothingAndTheSignupGoesThrough() throws Exception {
+    AtomicInteger received = new AtomicInteger();
+    route("/ok/v1/check", ex -> {
+      received.incrementAndGet();
+      send(ex, 200, SignupCheckTest.answer("block").toString());
+    });
+    CountDownLatch release = new CountDownLatch(1);
+    holdTheOnlySlot(release);
+    long t = System.nanoTime();
+    Decision d = check("/ok");
+    long ms = (System.nanoTime() - t) / 1_000_000;
+    assertEquals("busy", d.outcome());
+    assertFalse(d.refuse());
+    assertTrue(ms >= 1400 && ms < 3000, "gave up after " + ms + " ms");
+    assertEquals(0, received.get(), "a call that never got a slot reached the server");
+    // Once the slot is free again, the next signup is checked.
+    release.countDown();
+    assertEquals("block", check("/ok").outcome());
+    assertEquals(1, received.get());
+  }
+
+  @Test
+  void aSlotFreeOnlyAfterTheDeadlineRunsNothingAndIsGivenBack() throws Exception {
+    callers.shutdownNow();
+    callers = new HttpClientTransport.CallPool(1);
+    AtomicInteger ran = new AtomicInteger();
+    assertEquals(null, callers.submit(ran::incrementAndGet, System.nanoTime() - 1));
+    assertEquals(1, callers.submit(ran::incrementAndGet, System.nanoTime() + 1_000_000_000L).get(1, TimeUnit.SECONDS));
+    assertEquals(1, ran.get(), "the expired call never ran, and its slot came back for the next one");
   }
 
   @Test

@@ -306,6 +306,9 @@ class SignupCheckTest {
     assertEquals("timeout", run(new Fake(() -> {
       throw new TimeoutException();
     })).outcome());
+    assertEquals("busy", run(new Fake(() -> {
+      throw new Transport.Busy();
+    })).outcome());
     assertEquals("network_error", run(new Fake(() -> {
       throw new IOException("connection refused");
     })).outcome());

@@ -17,12 +17,12 @@ import java.util.regex.Pattern;
  * The SignupBouncer check without any Keycloak code: building the request to POST /v1/check, the 1.5-second limit, and
  * turning the answer (or its absence) into a Decision. SignupBouncerFormAction is the thin Keycloak glue around it.
  *
- * <p>The rules match SignupBouncer's other integrations. Any failure lets the signup through: no API key, a timeout, a
- * network failure, a 5xx, a 429, a refused key (401), an account with no app (404), any other non-2xx answer, an
- * answer that is not complete, or an App ID setting too long to be an app ID (no call: the API would not know which app
- * it meant). Only a complete, consistent answer can refuse a signup: action "block", or "challenge"
- * when the realm chose to refuse those. An address over 320 characters is refused without a call, as in every other
- * SignupBouncer integration (no real address is that long).
+ * <p>The rules match SignupBouncer's other integrations. Any failure lets the signup through: no API key, a timeout,
+ * every check slot busy until the deadline, a network failure, a 5xx, a 429, a refused key (401), an account with no
+ * app (404), any other non-2xx answer, an answer that is not complete, or an App ID setting too long to be an app ID
+ * (no call: the API would not know which app it meant). Only a complete, consistent answer can refuse a signup:
+ * action "block", or "challenge" when the realm chose to refuse those. An address over 320 characters is refused
+ * without a call, as in every other SignupBouncer integration (no real address is that long).
  */
 public final class SignupCheck {
 
@@ -107,6 +107,8 @@ public final class SignupCheck {
     Transport.Answer answer;
     try {
       answer = transport.post(checkUri, headers, body, timeout);
+    } catch (Transport.Busy e) {
+      return Decision.unchecked("busy", null);
     } catch (TimeoutException e) {
       return Decision.unchecked("timeout", null);
     } catch (InterruptedException e) {

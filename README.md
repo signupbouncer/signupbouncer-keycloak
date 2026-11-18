@@ -33,7 +33,7 @@ rebuilds its list every hour. From the Starter plan, it checks the IP address to
 
 1. [Sign up for SignupBouncer](https://signupbouncer.com/signup), then create an API key on your app's Integration tab.
    Copy the `sb_live_...` key. We show the key only once.
-2. Download `keycloak-signupbouncer-0.2.0.jar` from the
+2. Download `keycloak-signupbouncer-0.2.1.jar` from the
    [latest release](https://github.com/signupbouncer/signupbouncer-keycloak/releases/latest), or build it (below).
 3. Copy the jar into the `providers/` folder of your Keycloak 26 server. Delete any older `keycloak-signupbouncer` jar
    from the folder first, because Keycloak loads every jar it finds there. Run `bin/kc.sh build`, then restart Keycloak
@@ -140,7 +140,7 @@ own registration steps, reCAPTCHA among them, use the same interface.
 You need Java 17 or later and Maven 3.8 or later, or a container engine:
 
 ```sh
-mvn verify                   # unit tests, then target/keycloak-signupbouncer-0.2.0.jar
+mvn verify                   # unit tests, then target/keycloak-signupbouncer-0.2.1.jar
 bash scripts/build.sh        # the same in a maven:3.9-eclipse-temurin-21 container (podman or docker)
 bash test/e2e.sh             # a real Keycloak 26.8.1 in a container, against test/stub.ts (needs deno, curl, jq, python3)
 ```

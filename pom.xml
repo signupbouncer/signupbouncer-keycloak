@@ -11,7 +11,7 @@
 
   <groupId>com.signupbouncer</groupId>
   <artifactId>keycloak-signupbouncer</artifactId>
-  <version>0.2.0</version>
+  <version>0.2.1</version>
   <packaging>jar</packaging>
 
   <name>SignupBouncer for Keycloak</name>
@@ -33,7 +33,7 @@
     <junit.version>5.13.4</junit.version>
     <!-- A fixed date in the jar, so the same source builds the same bytes here and in the release workflow, and the
          checksum a release preview shows is the one GitHub's jar has. Set it to the release date when bumping. -->
-    <project.build.outputTimestamp>2026-11-07T00:00:00Z</project.build.outputTimestamp>
+    <project.build.outputTimestamp>2026-11-17T00:00:00Z</project.build.outputTimestamp>
   </properties>
 
   <dependencies>

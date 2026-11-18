@@ -2,7 +2,6 @@ package com.signupbouncer.keycloak;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
 import org.jboss.logging.Logger;
 import org.keycloak.Config;
 import org.keycloak.authentication.FormAction;
@@ -38,7 +37,7 @@ public final class SignupBouncerFormActionFactory implements FormActionFactory {
 
   private volatile String baseUrl = SignupCheck.DEFAULT_BASE_URL;
   private volatile String userAgent = "signupbouncer-keycloak/dev";
-  private final ExecutorService callers = HttpClientTransport.newCallPool();
+  private final HttpClientTransport.CallPool callers = HttpClientTransport.newCallPool();
 
   static String version() {
     String v = SignupBouncerFormActionFactory.class.getPackage().getImplementationVersion();
